@@ -1152,6 +1152,22 @@ jobs:
             - reports/externalTests/
       - gitter_notify_failure_unless_pr
 
+  c_ext_benchmarks:
+    <<: *base_node_latest_small
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Combine benchmark reports
+          command: cat reports/externalTests/benchmark-*.json | scripts/externalTests/merge_benchmarks.sh > reports/externalTests/all-benchmarks.json
+      - run:
+          name: Summarize reports
+          command: cat reports/externalTests/all-benchmarks.json | scripts/externalTests/summarize_benchmarks.sh > reports/externalTests/summarized-benchmarks.json
+      - store_artifacts:
+          path: reports/externalTests/all-benchmarks.json
+      - store_artifacts:
+          path: reports/externalTests/summarized-benchmarks.json
+
   b_win: &b_win
     <<: *base_win_powershell_large
     steps:
@@ -1393,6 +1409,15 @@ workflows:
       - t_ems_ext: *job_native_test_ext_zeppelin
       - t_ems_ext: *job_native_test_ext_ens
 
+      - c_ext_benchmarks:
+          <<: *workflow_trigger_on_tags
+          requires:
+            - t_ems_compile_ext_colony
+            - t_native_compile_ext_gnosis
+            - t_native_test_ext_gnosis_v2
+            - t_native_test_ext_zeppelin
+            - t_native_test_ext_ens
+
       # Windows build and tests
       - b_win: *workflow_trigger_on_tags
       - b_win_release: *workflow_trigger_on_tags
@@ -1458,3 +1483,7 @@ workflows:
       # Emscripten build and tests that take more than 15 minutes to execute
       - b_ems: *workflow_trigger_on_tags
       - t_ems_ext: *job_ems_test_ext_colony
+      - c_ext_benchmarks:
+          <<: *workflow_trigger_on_tags
+          requires:
+            - t_ems_test_ext_colony
